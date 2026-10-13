@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Source, contracts, and browser tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      VITE_DEPLOYMENT_FILE: testnet.json
+      VITE_REOWN_PROJECT_ID: ""
+      ARC_E2E_PORT: "5174"
+    steps:
+      - name: Check out source
+        # 固定到已核对的官方 v6 提交，禁止构建脚本复用仓库凭据。
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install pinned dependencies
+        run: npm ci
+      - name: Check source, contracts, and production build
+        run: npm run check
+      - name: Check generated ABI
+        run: git diff --exit-code -- src/generated/abi.ts
+      - name: Measure contract coverage
+        run: npm run contracts:coverage
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test desktop and mobile flows on local Anvil
+        run: npm run e2e
+      - name: Save test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: verification-reports
+          path: |
+            coverage/
+            contracts/lcov.info
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

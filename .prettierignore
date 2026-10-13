@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+artifacts
+src/generated
+contracts
+test-results
+playwright-report
+arc-batch-design.md
+arc-batch-implementation-prompt.md
+docs/private

@@ -1,0 +1,13 @@
+{
+  "chainId": 5042002,
+  "contractAddress": "0x083a96F75D6de7e97BD421820c98C25b07b79964",
+  "deploymentBlock": "66782972",
+  "transactionHash": "0x72c24dafa7c756daa2d6716e07781f13025c4f171bb08db36b61e8b937a73dc2",
+  "maxRecipients": "2",
+  "version": "1.0.0",
+  "compiler": "0.8.30+commit.73712a01.Emscripten.clang",
+  "evmVersion": "prague",
+  "sourceHash": "0xa67b94af19e29d9e90d154372a7e661ed30556294b0f9301e6f2bb0f1421c594",
+  "runtimeCodeHash": "0x4ee4713584e769a87712caab9b442967cc4013b457e290686f3c1eb57648c9e8",
+  "abiSource": "artifacts/distributor.json"
+}
