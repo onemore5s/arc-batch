@@ -126,6 +126,45 @@ it("selects and verifies the configured mainnet deployment on startup", async ()
   expect(gateway).toHaveBeenCalledWith(NETWORKS.mainnet.id);
   expect(screen.queryByText(/尚未配置合约/)).not.toBeInTheDocument();
 });
+it("切换到测试网后核验测试网合约，并使用该合约生成付款快照", async () => {
+  const env = setup();
+  const testnet = env.runtime.deployments[0];
+  const mainnet = {
+    ...testnet,
+    chainId: NETWORKS.mainnet.id,
+    contractAddress: b,
+  };
+  const mainnetGateway = {
+    ...mockGateway(),
+    deployment: mainnet,
+    chainId: vi.fn(async () => NETWORKS.mainnet.id),
+  };
+  env.runtime.deployments = [mainnet, testnet];
+  env.runtime.gateway = vi.fn((chainId) =>
+    chainId === NETWORKS.mainnet.id ? mainnetGateway : env.g,
+  );
+  render(<App runtime={env.runtime} />);
+  await waitFor(() =>
+    expect(mainnetGateway.maxRecipients).toHaveBeenCalledWith(
+      mainnet.contractAddress,
+    ),
+  );
+  await userEvent.click(screen.getByRole("combobox", { name: "目标网络" }));
+  await userEvent.click(
+    screen.getByRole("option", { name: NETWORKS.testnet.name }),
+  );
+  await waitFor(() =>
+    expect(env.g.maxRecipients).toHaveBeenCalledWith(testnet.contractAddress),
+  );
+  expect(screen.queryByText(/尚未配置合约/)).not.toBeInTheDocument();
+  await review();
+  const records = await env.store.list();
+  expect(records[0].snapshot).toMatchObject({
+    chainId: NETWORKS.testnet.id,
+    contractAddress: testnet.contractAddress,
+  });
+  expect(env.wallet.send).not.toHaveBeenCalled();
+});
 async function review() {
   await userEvent.click(
     within(screen.getByRole("banner")).getByRole("button", {

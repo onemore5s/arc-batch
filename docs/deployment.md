@@ -18,7 +18,9 @@ The current testnet contract also passed read-only simulations for 1, 50, and 10
 
 ## Frontend configuration
 
-Copy `.env.example` to `.env.local` and replace its placeholders. Select one existing manifest filename with `VITE_DEPLOYMENT_FILE`. The frontend and AppKit use that manifest's network at startup. Changing the network selector does not dynamically load another manifest.
+Copy `.env.example` to `.env.local` and replace its placeholders. Set `VITE_DEPLOYMENT_FILES` to a comma-separated list of existing manifest filenames. The frontend loads all selected manifests, and both the frontend and AppKit use the first manifest's network at startup. The network selector uses the matching contract for each configured chain. Configure the current mainnet manifest first and the current testnet manifest second when both networks should be available with mainnet as the default.
+
+The legacy single-file `VITE_DEPLOYMENT_FILE` variable remains supported when `VITE_DEPLOYMENT_FILES` is absent. A configured list must contain distinct filenames and at most one contract per supported network; do not combine current and legacy testnet manifests. A missing or invalid selected manifest fails the build instead of publishing an incomplete configuration.
 
 `VITE_REOWN_PROJECT_ID` is a public Reown identifier. Leave it empty for the injected-wallet fallback, or configure a project and its allowed origins for AppKit and WalletConnect. These values are bundled into frontend code and must contain no signing secrets.
 
@@ -67,7 +69,7 @@ After linking the project, run `vercel deploy --dry --format=json` to inspect th
 
 Vercel automatically promotes a new project's first deployment to Production, including when the CLI requests Preview. Treat the initial deployment as a production release and configure the public variables for Production before publishing. Once Production is initialized, use `vercel deploy` for previews and `vercel deploy --prod` for production releases. See [Vercel's first-deployment behavior](https://vercel.com/blog/default-production-domain).
 
-The build disables automatic copying of the entire `public/` directory. Its plugin validates and publishes only the selected manifest and logo. It excludes source maps and exposes only the two application `VITE_` variables. Vercel's automatic `VITE_VERCEL_*` metadata is accepted but not exposed to application code; other unexpected `VITE_*` variables stop the build.
+The build disables automatic copying of the entire `public/` directory. Its plugin validates and publishes only the explicitly selected manifests and logo. It excludes source maps and allows only the deployment-list setting, its legacy single-file fallback, and the public Reown Project ID as application `VITE_` variables. Vercel's automatic `VITE_VERCEL_*` metadata is accepted but not exposed to application code; other unexpected `VITE_*` variables stop the build.
 
 Publishing this repository does not create a hosted website. Add the actual application URL to the repository's About section once its deployment has been checked.
 

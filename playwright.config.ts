@@ -25,7 +25,7 @@ export default defineConfig({
     {
       command: `npm run dev -- --port ${port} --strictPort`,
       env: {
-        VITE_DEPLOYMENT_FILE: "e2e.json",
+        VITE_DEPLOYMENT_FILES: "e2e.json",
         VITE_REOWN_PROJECT_ID: "",
         ARC_VITE_CACHE_DIR: "node_modules/.vite-e2e",
       },

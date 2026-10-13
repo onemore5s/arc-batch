@@ -14,6 +14,7 @@ import { distributorAbi } from "../src/generated/abi";
 import { hash, payer, contract, makeRecord } from "./fixtures";
 import { mockGateway, chainEvidence } from "./chain-fixtures";
 import type { Deployment } from "../src/domain/types";
+import { NETWORKS } from "../src/config";
 export function makeDeployment(): Deployment {
   return {
     chainId: 5042002,
@@ -35,6 +36,49 @@ afterEach(() => {
   delete (window as Window & { ethereum?: Provider }).ethereum;
 });
 describe("RPC and deployment evidence adapters", () => {
+  it("按配置顺序加载两个网络，主网保持默认", async () => {
+    const testnet = makeDeployment();
+    const mainnet = { ...testnet, chainId: NETWORKS.mainnet.id };
+    const fetcher = vi.fn(
+      async (url: string) =>
+        new Response(
+          JSON.stringify(url.endsWith("mainnet.json") ? mainnet : testnet),
+        ),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    expect(await loadDeployment("mainnet.json, testnet.json")).toEqual([
+      mainnet,
+      testnet,
+    ]);
+    expect(fetcher).toHaveBeenCalledWith("/deployments/testnet.json", {
+      cache: "no-store",
+    });
+  });
+  it("任一清单缺失时拒绝加载不完整的网络配置", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url.endsWith("mainnet.json")
+          ? new Response(
+              JSON.stringify({
+                ...makeDeployment(),
+                chainId: NETWORKS.mainnet.id,
+              }),
+            )
+          : new Response("", { status: 404 }),
+      ),
+    );
+    await expect(loadDeployment("mainnet.json,testnet.json")).rejects.toThrow();
+  });
+  it("拒绝重复网络以避免选中错误的合约版本", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(makeDeployment()))),
+    );
+    await expect(
+      loadDeployment("testnet.json,testnet-legacy-2.json"),
+    ).rejects.toThrow();
+  });
   it("uses exact calldata/value with fees, receipts, paginated logs, and replacement callbacks", async () => {
     const g = new RpcGateway(5042002),
       s = makeRecord().snapshot,

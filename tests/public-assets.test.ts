@@ -5,6 +5,7 @@ import path from "node:path";
 import { createPublicAssets } from "../scripts/public-assets";
 import { SETTINGS } from "../src/config";
 import manifest from "../public/deployments/mainnet.json";
+import testnetManifest from "../public/deployments/testnet.json";
 
 const roots: string[] = [];
 function fixture() {
@@ -16,6 +17,10 @@ function fixture() {
     path.join(root, "deployments/mainnet.json"),
     JSON.stringify(manifest),
   );
+  fs.writeFileSync(
+    path.join(root, "deployments/testnet.json"),
+    JSON.stringify(testnetManifest),
+  );
   return root;
 }
 afterEach(() => {
@@ -23,6 +28,64 @@ afterEach(() => {
 });
 
 describe("Public deployment boundary", () => {
+  it("只公开显式配置的主网和测试网清单，保留顺序并兼容旧配置", () => {
+    const root = fixture();
+    fs.writeFileSync(
+      path.join(root, "deployments/private.json"),
+      "private fixture",
+    );
+    const assets = createPublicAssets(
+      {
+        VITE_DEPLOYMENT_FILES: "mainnet.json, testnet.json",
+        VITE_DEPLOYMENT_FILE: "ignored-legacy.json",
+      },
+      root,
+    );
+    expect(assets.map((asset) => asset.fileName)).toEqual([
+      SETTINGS.logoPath.slice(1),
+      "deployments/mainnet.json",
+      "deployments/testnet.json",
+    ]);
+    expect(JSON.parse(String(assets[2].source))).toEqual(testnetManifest);
+  });
+  it.each([
+    "",
+    "mainnet.json,",
+    "mainnet.json,../private.json",
+    "mainnet.json,mainnet.json",
+  ])("拒绝无效的多清单配置：%s", (selection) => {
+    expect(() =>
+      createPublicAssets({ VITE_DEPLOYMENT_FILES: selection }, fixture()),
+    ).toThrow();
+  });
+  it.each(["missing", "extra-field", "duplicate-chain", "unsupported-chain"])(
+    "额外清单异常时停止发布：%s",
+    (problem) => {
+      const root = fixture();
+      const file = path.join(root, "deployments/testnet.json");
+      if (problem === "missing") fs.rmSync(file);
+      else
+        fs.writeFileSync(
+          file,
+          JSON.stringify({
+            ...testnetManifest,
+            ...(problem === "extra-field"
+              ? { privateNote: "private fixture" }
+              : {}),
+            ...(problem === "duplicate-chain"
+              ? { chainId: manifest.chainId }
+              : {}),
+            ...(problem === "unsupported-chain" ? { chainId: 1 } : {}),
+          }),
+        );
+      expect(() =>
+        createPublicAssets(
+          { VITE_DEPLOYMENT_FILES: "mainnet.json,testnet.json" },
+          root,
+        ),
+      ).toThrow();
+    },
+  );
   it("accepts Vercel platform metadata without including it in public assets", () => {
     const marker = "private-build-author-fixture";
     const assets = createPublicAssets(
@@ -72,7 +135,11 @@ describe("Public deployment boundary", () => {
       ).toThrow();
     },
   );
-  it.each(["VITE_PRIVATE_KEY", "VITE_REOWN_PROJECT_ID_SECRET"])(
+  it.each([
+    "VITE_PRIVATE_KEY",
+    "VITE_REOWN_PROJECT_ID_SECRET",
+    "VITE_DEPLOYMENT_FILES_SECRET",
+  ])(
     "rejects unexpected public variable %s without exposing its value",
     (key) => {
       const value = "synthetic-sensitive-fixture";

@@ -13,7 +13,10 @@ async function start() {
   let deployments: Runtime["deployments"] = [],
     configurationError: string | undefined;
   try {
-    deployments = await loadDeployment(import.meta.env.VITE_DEPLOYMENT_FILE);
+    deployments = await loadDeployment(
+      import.meta.env.VITE_DEPLOYMENT_FILES ??
+        import.meta.env.VITE_DEPLOYMENT_FILE,
+    );
   } catch (error) {
     configurationError = (error as Error).message;
   }

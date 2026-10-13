@@ -2,10 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadEnv, type Plugin } from "vite";
 import { SETTINGS } from "../src/config.ts";
-import { deploymentSchema } from "../src/domain/schema.ts";
+import {
+  deploymentFiles,
+  parseDeployments,
+} from "../src/domain/deployments.ts";
 
 export const PUBLIC_ENV_KEYS = [
   "VITE_DEPLOYMENT_FILE",
+  "VITE_DEPLOYMENT_FILES",
   "VITE_REOWN_PROJECT_ID",
 ];
 type PublicAsset = { fileName: string; source: string | Buffer };
@@ -22,30 +26,28 @@ export function createPublicAssets(
     )
       throw new Error(`Unexpected public environment variable: ${key}`);
   }
-  const file = env.VITE_DEPLOYMENT_FILE;
-  if (
-    typeof file !== "string" ||
-    !/^[\w.-]+\.json$/.test(file) ||
-    file.includes("..")
-  )
-    throw new Error(
-      "Set VITE_DEPLOYMENT_FILE to a verified deployment filename before building",
-    );
-  const fileName = `deployments/${file}`;
-  let deployment;
+  const files = deploymentFiles(
+    env.VITE_DEPLOYMENT_FILES ?? env.VITE_DEPLOYMENT_FILE,
+  );
+  let deployments;
   try {
-    deployment = deploymentSchema.parse(
-      JSON.parse(fs.readFileSync(path.join(publicDir, fileName), "utf8")),
+    deployments = parseDeployments(
+      files.map((file) =>
+        JSON.parse(
+          fs.readFileSync(path.join(publicDir, "deployments", file), "utf8"),
+        ),
+      ),
     );
   } catch {
-    throw new Error(
-      `Invalid or unavailable public deployment manifest: ${fileName}`,
-    );
+    throw new Error("Invalid or unavailable public deployment manifests");
   }
   const logo = SETTINGS.logoPath.slice(1);
   return [
     { fileName: logo, source: fs.readFileSync(path.join(publicDir, logo)) },
-    { fileName, source: JSON.stringify(deployment, null, 2) + "\n" },
+    ...deployments.map((deployment, index) => ({
+      fileName: `deployments/${files[index]}`,
+      source: JSON.stringify(deployment, null, 2) + "\n",
+    })),
   ];
 }
 

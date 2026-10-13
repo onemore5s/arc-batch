@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
-      VITE_DEPLOYMENT_FILE: testnet.json
+      VITE_DEPLOYMENT_FILES: testnet.json
       VITE_REOWN_PROJECT_ID: ""
       ARC_E2E_PORT: "5174"
     steps:

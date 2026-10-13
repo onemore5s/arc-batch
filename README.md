@@ -32,7 +32,7 @@ cp .env.example .env.local
 
 Edit `.env.local` before continuing:
 
-- Replace `VITE_DEPLOYMENT_FILE` with a filename from [public/deployments](public/deployments). Use the testnet manifest for development.
+- Replace `VITE_DEPLOYMENT_FILES` with a comma-separated list of filenames from [public/deployments](public/deployments). The first manifest selects the default network; use the testnet manifest first for development.
 - Replace `VITE_REOWN_PROJECT_ID` with your public [Reown Project ID](https://dashboard.reown.com), or leave it empty to use injected browser wallets.
 - The `ARC_*` entries are only for deployment scripts; they are not required to run the frontend.
 
@@ -54,7 +54,7 @@ The following manifests record deployment receipts and RPC verification performe
 
 A [legacy testnet manifest](public/deployments/testnet-legacy-2.json) preserves the older two-recipient deployment for historical records. Deployment bytecode verification is distinct from explorer source verification and a security audit. See [deployment details](docs/deployment.md) and [review scope](docs/mainnet-review.md).
 
-The frontend loads one deployment manifest per build. Its initial network follows that manifest. Changing the network selector does not load a second contract automatically; payments remain disabled where no matching deployment is configured.
+The frontend loads each explicitly configured deployment manifest at startup. Its initial network follows the first manifest, and the network selector uses the matching contract for each configured chain. Only one contract per network is accepted; payments remain disabled where no matching deployment is configured. The legacy `VITE_DEPLOYMENT_FILE` setting remains supported when `VITE_DEPLOYMENT_FILES` is absent.
 
 ## Build and host
 
@@ -64,7 +64,7 @@ npm run build
 
 The build requires the configured manifest and produces `dist/`. All `VITE_` values are public. Never put private keys, seed phrases, or secret RPC credentials in frontend configuration.
 
-For Vercel, use [vercel.json](vercel.json), configure `VITE_DEPLOYMENT_FILE` and `VITE_REOWN_PROJECT_ID` in the deployment environment, and allow the hosted origin in Reown. The build publishes only the selected, validated manifest and logo from `public/`. It excludes source maps and local reports. See [hosting instructions](docs/deployment.md#hosting).
+For Vercel, use [vercel.json](vercel.json), configure `VITE_DEPLOYMENT_FILES` and `VITE_REOWN_PROJECT_ID` in the deployment environment, and allow the hosted origin in Reown. The build publishes only the explicitly selected, validated manifests and logo from `public/`. It excludes source maps and local reports. See [hosting instructions](docs/deployment.md#hosting).
 
 ## Checks
 

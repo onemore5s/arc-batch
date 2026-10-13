@@ -22,6 +22,7 @@ import { distributorAbi } from "../generated/abi";
 import { distributeData, verifyReceipt } from "./service";
 import { queryFees } from "./fees";
 import { deploymentSchema } from "../domain/schema";
+import { deploymentFiles, parseDeployments } from "../domain/deployments";
 import { makeSnapshot, createRecord } from "../domain/batch";
 import { formatNative } from "../domain/amount";
 import { checkFileSize } from "../domain/recipients";
@@ -275,13 +276,18 @@ export async function loadDeployment(
   file: string | undefined,
 ): Promise<Deployment[]> {
   if (!file) return [];
-  if (!/^[\w.-]+\.json$/.test(file) || file.includes(".."))
-    throw new Error("部署清单文件名无效");
-  const response = await fetch(`/deployments/${file}`, { cache: "no-store" });
-  if (!response.ok) throw new Error("部署清单加载失败");
-  const text = await response.text();
-  checkFileSize(text);
-  return [deploymentSchema.parse(JSON.parse(text)) as Deployment];
+  const values = await Promise.all(
+    deploymentFiles(file).map(async (name) => {
+      const response = await fetch(`/deployments/${name}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("部署清单加载失败");
+      const text = await response.text();
+      checkFileSize(text);
+      return JSON.parse(text);
+    }),
+  );
+  return parseDeployments(values);
 }
 export function deploymentNetwork(deployments: Deployment[]): NetworkName {
   return (
